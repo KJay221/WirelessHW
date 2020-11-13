@@ -62,8 +62,6 @@ int main(){
                     }
                 }
                 float blocking_prob=blocking_number/call_number;
-                //cout<<arrival_rate<<" , "<<service_rate<<" , "<<service_number<<endl;
-                //cout<<"blocking probability = "<<blocking_prob<<endl;
                 free(service);
                 table[t1][t2][t3]=blocking_prob;
             }

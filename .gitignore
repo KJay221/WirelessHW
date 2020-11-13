@@ -2,8 +2,9 @@
 *.pdf
 *.vscode
 *.csv
-
 *.out
+*.txt
+*.o
 
 #HW1
 F74076297_project/
