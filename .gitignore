@@ -1,0 +1,15 @@
+*.odt
+*.pdf
+*.vscode
+*.csv
+*.app
+
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+#HW1
+F74076297_project/
