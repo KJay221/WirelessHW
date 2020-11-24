@@ -9,15 +9,15 @@
 #include "car.h"
 using namespace std;
 
-void generate_strength(int x,int y,int n,float (&data)[100][100][4]);
+void generate_strength(int x,int y,int n,float (&data)[101][101][4]);
 
 int main(){
     //compute every gain dBm
-    float gain_dbm[100][100][4]={0};
+    float gain_dbm[101][101][4]={0};
     generate_strength(330,350,0,gain_dbm);
     generate_strength(640,310,1,gain_dbm);
     generate_strength(360,680,2,gain_dbm);
-    generate_strength(660,658,3,gain_dbm);
+    generate_strength(660,660,3,gain_dbm);
 
     //car move random
     default_random_engine generator_move(time(NULL));
@@ -31,11 +31,13 @@ int main(){
     
     //system time for loop
     int car_sum=0;
-    for(int system_time=0;system_time<2000;system_time++){
+    int handoff_all=0;
+    int low=0;
+    for(int system_time=0;system_time<86400;system_time++){
         //car move
         for(int i=0;i<car_array.size();i++){
-            if(car_array[i].at_coner==10||car_array[i].at_coner==0){
-                car_array[i].at_coner=1;
+            if(car_array[i].at_corner==10||car_array[i].at_corner==0){
+                car_array[i].at_corner=1;
                 float move_p=uniform_distribution_move(generator_move); 
                 //straight
                 if(move_p <= 0.6){
@@ -49,7 +51,7 @@ int main(){
                         car_array[i].y-=10;
                 }
                 //right
-                if(move_p > 0.6 && move_p <= 0.8){
+                else if(move_p > 0.6 && move_p <= 0.8){
                     if(car_array[i].direction==0){
                         car_array[i].y-=10;
                         car_array[i].direction=3;
@@ -68,7 +70,7 @@ int main(){
                     }   
                 }
                 //left
-                if(move_p > 0.8 && move_p <= 1.0){
+                else if(move_p > 0.8 && move_p <= 1.0){
                     if(car_array[i].direction==0){
                         car_array[i].y+=10;
                         car_array[i].direction=1;
@@ -96,14 +98,14 @@ int main(){
                     car_array[i].x-=10;
                 else if(car_array[i].direction==3)
                     car_array[i].y-=10;
-                car_array[i].at_coner++;
+                car_array[i].at_corner++;
             }
         }
 
         //car remove
         int resize_number=1;
         for(int i=0;i<car_array.size()-resize_number+1;i++){
-            if(car_array[i].at_coner==1)
+            if(car_array[i].at_corner==1)
                 if(car_array[i].x>1000 || car_array[i].x<0 || car_array[i].y>1000 || car_array[i].y<0){
                     car_array[i]=car_array[car_array.size()-resize_number];
                     resize_number++;
@@ -111,7 +113,10 @@ int main(){
                     car_sum--;
                 }    
         }
+        //cout<<"car sum: "<<car_sum<<"   ";
+        //cout<<car_array.size()<<"   ";
         car_array.resize(car_sum,Car(0,0,0));
+        //cout<<car_array.size()<<endl;
 
         //poisson arrive
         int car_number[4][9];
@@ -152,13 +157,40 @@ int main(){
             for(int j=0;j<car_number[3][i];j++)
                 car_array.push_back(Car((i+1)*100,1000,3));
         }
+
+        //best policy
+        int now_handoff=0;
+        bool first_hand_off=false;
+        for(int i=0;i<car_array.size();i++){
+            float strong_one=0;
+            int get_gain=car_array[i].best_gain;
+            if(get_gain==-1)
+                first_hand_off=true;
+            for(int j=0;j<4;j++){
+                float get_dbm=gain_dbm[car_array[i].x/10][car_array[i].y/10][j];
+                if(get_dbm>strong_one){
+                    strong_one=get_dbm;
+                    get_gain=j;
+                }                  
+            }
+            if(get_gain!=car_array[i].best_gain){
+                if(!first_hand_off){
+                    handoff_all++;
+                    now_handoff++;
+                } 
+            }
+            car_array[i].best_gain=get_gain;
+            car_array[i].best_policy=strong_one;
+        }
+        //cout<<now_handoff<<endl;
+        //cout<<car_array[0].best_policy<<" x: "<<car_array[0].x<<" y: "<<car_array[0].y<<"  "<<car_array[0].best_gain<<endl;
     }
+    cout<<handoff_all<<endl;
 }
 
-void generate_strength(int x,int y,int n,float (&data)[100][100][4]){
-    for(int i=0;i<1000;i+=10){
-        for(int j=0;j<1000;j+=10){
+void generate_strength(int x,int y,int n,float (&data)[101][101][4]){
+    for(int i=0;i<1010;i+=10){
+        for(int j=0;j<1010;j+=10)
             data[i/10][j/10][n]=67-20*log10(sqrt(pow(x-i,2)+pow(y-j,2)));
-        }
     }
 }
