@@ -4,6 +4,8 @@
 #include <ctime>
 #include <math.h>
 #include <fstream>
+#include <vector>
+#include <algorithm>
 #include "car.h"
 using namespace std;
 
@@ -17,13 +19,100 @@ int main(){
     generate_strength(360,680,2,gain_dbm);
     generate_strength(660,658,3,gain_dbm);
 
+    //car move random
+    default_random_engine generator_move(time(NULL));
+    uniform_real_distribution<double> uniform_distribution_move(0.0,1.0);
     //poisson random
     default_random_engine generator(time(NULL));
     uniform_real_distribution<double> uniform_distribution(0.0,1.0);
     float arrival_rate=0.5;
     float come_prob=1-exp(-arrival_rate*0.01);
+    vector<Car> car_array;
+    
     //system time for loop
-    for(int system_time=0;system_time<20;system_time++){
+    int car_sum=0;
+    for(int system_time=0;system_time<2000;system_time++){
+        //car move
+        for(int i=0;i<car_array.size();i++){
+            if(car_array[i].at_coner==10||car_array[i].at_coner==0){
+                car_array[i].at_coner=1;
+                float move_p=uniform_distribution_move(generator_move); 
+                //straight
+                if(move_p <= 0.6){
+                    if(car_array[i].direction==0)
+                        car_array[i].x+=10;
+                    else if(car_array[i].direction==1)
+                        car_array[i].y+=10;
+                    else if(car_array[i].direction==2)
+                        car_array[i].x-=10;
+                    else if(car_array[i].direction==3)
+                        car_array[i].y-=10;
+                }
+                //right
+                if(move_p > 0.6 && move_p <= 0.8){
+                    if(car_array[i].direction==0){
+                        car_array[i].y-=10;
+                        car_array[i].direction=3;
+                    }
+                    else if(car_array[i].direction==1){
+                        car_array[i].x+=10;
+                        car_array[i].direction=0;
+                    } 
+                    else if(car_array[i].direction==2){
+                        car_array[i].y+=10;
+                        car_array[i].direction=1;
+                    }
+                    else if(car_array[i].direction==3){
+                        car_array[i].x-=10;
+                        car_array[i].direction=2;
+                    }   
+                }
+                //left
+                if(move_p > 0.8 && move_p <= 1.0){
+                    if(car_array[i].direction==0){
+                        car_array[i].y+=10;
+                        car_array[i].direction=1;
+                    }
+                    else if(car_array[i].direction==1){
+                        car_array[i].x-=10;
+                        car_array[i].direction=2;
+                    } 
+                    else if(car_array[i].direction==2){
+                        car_array[i].y-=10;
+                        car_array[i].direction=3;
+                    }
+                    else if(car_array[i].direction==3){
+                        car_array[i].x+=10;
+                        car_array[i].direction=0;
+                    }   
+                }
+            }
+            else{
+                if(car_array[i].direction==0)
+                    car_array[i].x+=10;
+                else if(car_array[i].direction==1)
+                    car_array[i].y+=10;
+                else if(car_array[i].direction==2)
+                    car_array[i].x-=10;
+                else if(car_array[i].direction==3)
+                    car_array[i].y-=10;
+                car_array[i].at_coner++;
+            }
+        }
+
+        //car remove
+        int resize_number=1;
+        for(int i=0;i<car_array.size()-resize_number+1;i++){
+            if(car_array[i].at_coner==1)
+                if(car_array[i].x>1000 || car_array[i].x<0 || car_array[i].y>1000 || car_array[i].y<0){
+                    car_array[i]=car_array[car_array.size()-resize_number];
+                    resize_number++;
+                    i--;
+                    car_sum--;
+                }    
+        }
+        car_array.resize(car_sum,Car(0,0,0));
+
         //poisson arrive
         int car_number[4][9];
         for(int i=0;i<4;i++){
@@ -32,15 +121,36 @@ int main(){
         }
         for(int i=0;i<9;i++){
             for(float t=0;t<100;t++){
-                if(uniform_distribution(generator)<come_prob)
+                if(uniform_distribution(generator)<come_prob){
                     car_number[0][i]++;
-                if(uniform_distribution(generator)<come_prob)
+                    car_sum++;
+                }
+                if(uniform_distribution(generator)<come_prob){
                     car_number[1][i]++;
-                if(uniform_distribution(generator)<come_prob)
+                    car_sum++;
+                }                    
+                if(uniform_distribution(generator)<come_prob){
                     car_number[2][i]++;
-                if(uniform_distribution(generator)<come_prob)
+                    car_sum++;
+                }
+                if(uniform_distribution(generator)<come_prob){
                     car_number[3][i]++;
+                    car_sum++;
+                }
             }
+        }
+
+        //car enter
+        car_array.reserve(car_sum);
+        for(int i=0;i<9;i++){
+            for(int j=0;j<car_number[0][i];j++)
+                car_array.push_back(Car(0,(i+1)*100,0));
+            for(int j=0;j<car_number[1][i];j++)
+                car_array.push_back(Car((i+1)*100,0,1));
+            for(int j=0;j<car_number[2][i];j++)
+                car_array.push_back(Car(1000,(i+1)*100,2));
+            for(int j=0;j<car_number[3][i];j++)
+                car_array.push_back(Car((i+1)*100,1000,3));
         }
     }
 }
