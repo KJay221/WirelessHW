@@ -5,7 +5,6 @@
 #include <math.h>
 #include <fstream>
 #include <vector>
-#include <algorithm>
 #include "car.h"
 using namespace std;
 
@@ -31,8 +30,8 @@ int main(){
     
     //system time for loop
     int car_sum=0;
+    float average_power=0;
     int handoff_all=0;
-    int low=0;
     for(int system_time=0;system_time<86400;system_time++){
         //car move
         for(int i=0;i<car_array.size();i++){
@@ -113,10 +112,7 @@ int main(){
                     car_sum--;
                 }    
         }
-        //cout<<"car sum: "<<car_sum<<"   ";
-        //cout<<car_array.size()<<"   ";
         car_array.resize(car_sum,Car(0,0,0));
-        //cout<<car_array.size()<<endl;
 
         //poisson arrive
         int car_number[4][9];
@@ -159,7 +155,6 @@ int main(){
         }
 
         //best policy
-        int now_handoff=0;
         bool first_hand_off=false;
         for(int i=0;i<car_array.size();i++){
             float strong_one=0;
@@ -174,18 +169,22 @@ int main(){
                 }                  
             }
             if(get_gain!=car_array[i].best_gain){
-                if(!first_hand_off){
+                if(!first_hand_off)
                     handoff_all++;
-                    now_handoff++;
-                } 
             }
             car_array[i].best_gain=get_gain;
             car_array[i].best_policy=strong_one;
         }
-        //cout<<now_handoff<<endl;
         //cout<<car_array[0].best_policy<<" x: "<<car_array[0].x<<" y: "<<car_array[0].y<<"  "<<car_array[0].best_gain<<endl;
+
+        //count power
+        float one_time_power=0;
+        for(int i=0;i<car_array.size();i++)
+            one_time_power+=car_array[i].best_policy;
+        average_power+=(one_time_power/car_array.size());
     }
-    cout<<handoff_all<<endl;
+    cout<<"handoff_all: "<<handoff_all<<endl;
+    cout<<"average_power: "<<average_power/86400.0<<endl;
 }
 
 void generate_strength(int x,int y,int n,float (&data)[101][101][4]){
