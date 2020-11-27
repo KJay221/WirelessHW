@@ -183,7 +183,7 @@ int main(){
             if(car_array[i].best_policy<10 || car_array[i].best_policy<strong_one){
                 if(get_gain!=car_array[i].best_gain && !first_hand_off){
                     handoff_best++;
-                    handoff_best_time[i]++;
+                    handoff_best_time[system_time]++;
                 }
                 car_array[i].best_gain=get_gain;
                 car_array[i].best_policy=strong_one;
@@ -207,7 +207,7 @@ int main(){
                     if(get_gain!=car_array[i].threshold_gain[t] && !first_hand_off){
                         handoff_threshold[t]++;
                         if(t==4)
-                            handoff_threshold_time[i]++;
+                            handoff_threshold_time[system_time]++;
                     }    
                     car_array[i].threshold_gain[t]=get_gain;
                     car_array[i].threshold_policy[t]=strong_one;
@@ -255,6 +255,16 @@ int main(){
             cout<<"average_power_threshold t="<<t+11<<" :"<<average_power_threshold[t]<<endl;
             break;
         }
+    }
+
+    //write file
+    fstream  file;
+    string lambda="";
+    string filename="best_policy λ="+to_string(arrival_rate)+".csv";
+    file.open(filename,ios::out);
+    for(int system_time=0;system_time<86400;system_time++){
+        file<<system_time<<",";
+        file<<handoff_best_time[system_time]<<endl;
     }
 }
 
