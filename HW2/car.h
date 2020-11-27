@@ -8,11 +8,13 @@ class Car{
         int direction;
         int best_gain;
         float best_policy;
-        int threshold_gain;
-        float threshold_policy;
+        int threshold_gain[20];
+        float threshold_policy[20];
         int entropy_gain;
         float entropy_policy;
         int your_gain;
         float your_policy;
+        int min_gain;
+        float min_policy;
         int at_corner;
 };

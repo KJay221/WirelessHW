@@ -28,10 +28,18 @@ int main(){
     float come_prob=1-exp(-arrival_rate*0.01);
     vector<Car> car_array;
     
-    //system time for loop
     int car_sum=0;
-    float average_power=0;
-    int handoff_all=0;
+    float average_power_best=0;
+    float average_power_min=0;
+    float average_power_threshold[20]={0};
+    int handoff_best=0;
+    int handoff_min=0;
+    int handoff_threshold[20]={0};
+    //graph variable
+    int handoff_best_time[86400]={0};
+    int handoff_threshold_time[86400]={0};
+
+    //system time for loop
     for(int system_time=0;system_time<86400;system_time++){
         //car move
         for(int i=0;i<car_array.size();i++){
@@ -154,37 +162,100 @@ int main(){
                 car_array.push_back(Car((i+1)*100,1000,3));
         }
 
-        //best policy
+        //policy
         bool first_hand_off=false;
-        for(int i=0;i<car_array.size();i++){
+        int car_array_size=car_array.size();
+        for(int i=0;i<car_array_size;i++){
+            int car_x_index=car_array[i].x/10;
+            int car_y_index=car_array[i].y/10;
             float strong_one=0;
             int get_gain=car_array[i].best_gain;
             if(get_gain==-1)
                 first_hand_off=true;
             for(int j=0;j<4;j++){
-                float get_dbm=gain_dbm[car_array[i].x/10][car_array[i].y/10][j];
+                float get_dbm=gain_dbm[car_x_index][car_y_index][j];
                 if(get_dbm>strong_one){
                     strong_one=get_dbm;
                     get_gain=j;
                 }                  
             }
-            if(get_gain!=car_array[i].best_gain){
-                if(!first_hand_off)
-                    handoff_all++;
+            //best policy
+            if(car_array[i].best_policy<10 || car_array[i].best_policy<strong_one){
+                if(get_gain!=car_array[i].best_gain && !first_hand_off){
+                    handoff_best++;
+                    handoff_best_time[i]++;
+                }
+                car_array[i].best_gain=get_gain;
+                car_array[i].best_policy=strong_one;
             }
-            car_array[i].best_gain=get_gain;
-            car_array[i].best_policy=strong_one;
+            else
+                car_array[i].best_policy=gain_dbm[car_x_index][car_y_index][car_array[i].best_gain];
+            
+            //min policy
+            if(car_array[i].min_policy<10){
+                if(get_gain!=car_array[i].min_gain && !first_hand_off)
+                    handoff_min++;
+                car_array[i].min_gain=get_gain;
+                car_array[i].min_policy=strong_one;
+            }
+            else
+                car_array[i].min_policy=gain_dbm[car_x_index][car_y_index][car_array[i].min_gain];
+            
+            //threshold: start at t=11
+            for(int t=0;t<20;t++){
+                if(car_array[i].threshold_policy[t]<10 || (car_array[i].threshold_policy[t]<strong_one && car_array[i].threshold_policy[t]<t+11)){   
+                    if(get_gain!=car_array[i].threshold_gain[t] && !first_hand_off){
+                        handoff_threshold[t]++;
+                        if(t==4)
+                            handoff_threshold_time[i]++;
+                    }    
+                    car_array[i].threshold_gain[t]=get_gain;
+                    car_array[i].threshold_policy[t]=strong_one;
+                }
+                else
+                    car_array[i].threshold_policy[t]=gain_dbm[car_x_index][car_y_index][car_array[i].threshold_gain[t]];
+            }
         }
-        //cout<<car_array[0].best_policy<<" x: "<<car_array[0].x<<" y: "<<car_array[0].y<<"  "<<car_array[0].best_gain<<endl;
+        //cout<<car_array[0].best_policy<<" x: "<<car_array[0].x<<" y: "<<car_array[0].y<<"  "<<car_array[0].threshold_gain[0]<<endl;
 
         //count power
-        float one_time_power=0;
-        for(int i=0;i<car_array.size();i++)
-            one_time_power+=car_array[i].best_policy;
-        average_power+=(one_time_power/car_array.size());
+        float one_time_power_best=0;
+        float one_time_power_min=0;
+        float one_time_power_threshold[20]={0};
+        for(int i=0;i<car_array_size;i++){
+            one_time_power_best+=car_array[i].best_policy;
+            one_time_power_min+=car_array[i].min_policy;
+            for(int t=0;t<20;t++){
+                one_time_power_threshold[t]+=car_array[i].threshold_policy[t];
+            }
+        }    
+        average_power_best+=one_time_power_best/car_array_size;
+        average_power_min+=one_time_power_min/car_array_size;
+        for(int t=0;t<20;t++){
+            average_power_threshold[t]+=one_time_power_threshold[t]/car_array_size;
+        }
     }
-    cout<<"handoff_all: "<<handoff_all<<endl;
-    cout<<"average_power: "<<average_power/86400.0<<endl;
+    average_power_best/=86400.0;
+    average_power_min/=86400.0;
+    float average_power_middle=(average_power_min+average_power_best)/2;
+    for(int t=0;t<20;t++){
+        average_power_threshold[t]/=86400.0;
+    }
+
+    //output
+    int best_T=0;
+    cout<<"handoff_best: "<<handoff_best<<endl;
+    cout<<"average_power_best: "<<average_power_best<<endl;
+    cout<<"handoff_min: "<<handoff_min<<endl;
+    cout<<"average_power_min: "<<average_power_min<<endl;
+    for(int t=0;t<20;t++){
+        if(average_power_threshold[t]>average_power_middle){
+            best_T=t+11;
+            cout<<"handoff_threshold t="<<t+11<<" :"<<handoff_threshold[t]<<endl;
+            cout<<"average_power_threshold t="<<t+11<<" :"<<average_power_threshold[t]<<endl;
+            break;
+        }
+    }
 }
 
 void generate_strength(int x,int y,int n,float (&data)[101][101][4]){
