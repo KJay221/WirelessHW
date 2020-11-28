@@ -24,20 +24,25 @@ int main(){
     //poisson random
     default_random_engine generator(time(NULL));
     uniform_real_distribution<double> uniform_distribution(0.0,1.0);
-    float arrival_rate=0.5;
+    float arrival_rate=0.2;
     float come_prob=1-exp(-arrival_rate*0.01);
     vector<Car> car_array;
     
     int car_sum=0;
+    //avg power
     float average_power_best=0;
     float average_power_min=0;
     float average_power_threshold[20]={0};
+    float average_power_entropy[20]={0};
+    //handoff
     int handoff_best=0;
     int handoff_min=0;
     int handoff_threshold[20]={0};
+    int handoff_entropy[20]={0};
     //graph variable
     int handoff_best_time[86400]={0};
     int handoff_threshold_time[86400]={0};
+    int handoff_entropy_time[86400]={0};
 
     //system time for loop
     for(int system_time=0;system_time<86400;system_time++){
@@ -215,6 +220,21 @@ int main(){
                 else
                     car_array[i].threshold_policy[t]=gain_dbm[car_x_index][car_y_index][car_array[i].threshold_gain[t]];
             }
+
+            //entropy: start at e=11
+            for(int e=0;e<20;e++){
+                if(car_array[i].entropy_policy[e]<10 || car_array[i].entropy_policy[e]+e+11<strong_one){   
+                    if(get_gain!=car_array[i].entropy_gain[e] && !first_hand_off){
+                        handoff_entropy[e]++;
+                        if(e==1)
+                            handoff_entropy_time[system_time]++;
+                    }    
+                    car_array[i].entropy_gain[e]=get_gain;
+                    car_array[i].entropy_policy[e]=strong_one;
+                }
+                else
+                    car_array[i].entropy_policy[e]=gain_dbm[car_x_index][car_y_index][car_array[i].entropy_gain[e]];
+            }
         }
         //cout<<car_array[0].best_policy<<" x: "<<car_array[0].x<<" y: "<<car_array[0].y<<"  "<<car_array[0].threshold_gain[0]<<endl;
 
@@ -222,17 +242,20 @@ int main(){
         float one_time_power_best=0;
         float one_time_power_min=0;
         float one_time_power_threshold[20]={0};
+        float one_time_power_entropy[20]={0};
         for(int i=0;i<car_array_size;i++){
             one_time_power_best+=car_array[i].best_policy;
             one_time_power_min+=car_array[i].min_policy;
             for(int t=0;t<20;t++){
                 one_time_power_threshold[t]+=car_array[i].threshold_policy[t];
+                one_time_power_entropy[t]+=car_array[i].entropy_policy[t];
             }
         }    
         average_power_best+=one_time_power_best/car_array_size;
         average_power_min+=one_time_power_min/car_array_size;
         for(int t=0;t<20;t++){
             average_power_threshold[t]+=one_time_power_threshold[t]/car_array_size;
+            average_power_entropy[t]+=one_time_power_entropy[t]/car_array_size;
         }
     }
     average_power_best/=86400.0;
@@ -240,10 +263,12 @@ int main(){
     float average_power_middle=(average_power_min+average_power_best)/2;
     for(int t=0;t<20;t++){
         average_power_threshold[t]/=86400.0;
+        average_power_entropy[t]/=86400.0;
     }
 
     //output
     int best_T=0;
+    int best_E=0;
     cout<<"handoff_best: "<<handoff_best<<endl;
     cout<<"average_power_best: "<<average_power_best<<endl;
     cout<<"handoff_min: "<<handoff_min<<endl;
@@ -256,6 +281,16 @@ int main(){
             break;
         }
     }
+    for(int e=0;e<20;e++){
+        if(average_power_entropy[e]>average_power_middle){
+            best_E=e+11;
+            if(average_power_entropy[e+1]<average_power_middle){
+                cout<<"handoff_entropy e="<<e+11<<" :"<<handoff_entropy[e]<<endl;
+                cout<<"average_power_entropy e="<<e+11<<" :"<<average_power_entropy[e]<<endl;
+                break;
+            }
+        }
+    }
 
     //write file
     fstream  file;
@@ -266,6 +301,21 @@ int main(){
         file<<system_time<<",";
         file<<handoff_best_time[system_time]<<endl;
     }
+    file.close();
+    filename="threshold_policy λ="+to_string(arrival_rate)+".csv";
+    file.open(filename,ios::out);
+    for(int system_time=0;system_time<86400;system_time++){
+        file<<system_time<<",";
+        file<<handoff_threshold_time[system_time]<<endl;
+    }
+    file.close();
+    filename="entropy_policy λ="+to_string(arrival_rate)+".csv";
+    file.open(filename,ios::out);
+    for(int system_time=0;system_time<86400;system_time++){
+        file<<system_time<<",";
+        file<<handoff_entropy_time[system_time]<<endl;
+    }
+    file.close();
 }
 
 void generate_strength(int x,int y,int n,float (&data)[101][101][4]){
