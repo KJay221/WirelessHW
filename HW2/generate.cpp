@@ -24,7 +24,9 @@ int main(){
     //poisson random
     default_random_engine generator(time(NULL));
     uniform_real_distribution<double> uniform_distribution(0.0,1.0);
-    float arrival_rate=0.2;
+    float arrival_rate=0;
+    cout<<"cin arrival rate: ";
+    cin>>arrival_rate;
     float come_prob=1-exp(-arrival_rate*0.01);
     vector<Car> car_array;
     
@@ -34,15 +36,18 @@ int main(){
     float average_power_min=0;
     float average_power_threshold[20]={0};
     float average_power_entropy[20]={0};
+    float average_power_your[20]={0};
     //handoff
     int handoff_best=0;
     int handoff_min=0;
     int handoff_threshold[20]={0};
     int handoff_entropy[20]={0};
+    int handoff_your[20]={0};
     //graph variable
     int handoff_best_time[86400]={0};
     int handoff_threshold_time[86400]={0};
     int handoff_entropy_time[86400]={0};
+    int handoff_your_time[86400]={0};
 
     //system time for loop
     for(int system_time=0;system_time<86400;system_time++){
@@ -235,6 +240,21 @@ int main(){
                 else
                     car_array[i].entropy_policy[e]=gain_dbm[car_x_index][car_y_index][car_array[i].entropy_gain[e]];
             }
+
+            //your: start at n=15
+            for(int n=0;n<20;n++){
+                if(car_array[i].your_policy[n]<10 || (car_array[i].your_policy[n]<strong_one&&strong_one>n+15)){   
+                    if(get_gain!=car_array[i].your_gain[n] && !first_hand_off){
+                        handoff_your[n]++;
+                        if(n==1)
+                            handoff_your_time[system_time]++;
+                    }    
+                    car_array[i].your_gain[n]=get_gain;
+                    car_array[i].your_policy[n]=strong_one;
+                }
+                else
+                    car_array[i].your_policy[n]=gain_dbm[car_x_index][car_y_index][car_array[i].your_gain[n]];
+            }
         }
         //cout<<car_array[0].best_policy<<" x: "<<car_array[0].x<<" y: "<<car_array[0].y<<"  "<<car_array[0].threshold_gain[0]<<endl;
 
@@ -243,12 +263,14 @@ int main(){
         float one_time_power_min=0;
         float one_time_power_threshold[20]={0};
         float one_time_power_entropy[20]={0};
+        float one_time_power_your[20]={0};
         for(int i=0;i<car_array_size;i++){
             one_time_power_best+=car_array[i].best_policy;
             one_time_power_min+=car_array[i].min_policy;
             for(int t=0;t<20;t++){
                 one_time_power_threshold[t]+=car_array[i].threshold_policy[t];
                 one_time_power_entropy[t]+=car_array[i].entropy_policy[t];
+                one_time_power_your[t]+=car_array[i].your_policy[t];
             }
         }    
         average_power_best+=one_time_power_best/car_array_size;
@@ -256,6 +278,7 @@ int main(){
         for(int t=0;t<20;t++){
             average_power_threshold[t]+=one_time_power_threshold[t]/car_array_size;
             average_power_entropy[t]+=one_time_power_entropy[t]/car_array_size;
+            average_power_your[t]+=one_time_power_your[t]/car_array_size;
         }
     }
     average_power_best/=86400.0;
@@ -264,11 +287,13 @@ int main(){
     for(int t=0;t<20;t++){
         average_power_threshold[t]/=86400.0;
         average_power_entropy[t]/=86400.0;
+        average_power_your[t]/=86400.0;
     }
 
     //output
     int best_T=0;
     int best_E=0;
+    int best_N=0;
     cout<<"handoff_best: "<<handoff_best<<endl;
     cout<<"average_power_best: "<<average_power_best<<endl;
     cout<<"handoff_min: "<<handoff_min<<endl;
@@ -287,6 +312,16 @@ int main(){
             if(average_power_entropy[e+1]<average_power_middle){
                 cout<<"handoff_entropy e="<<e+11<<" :"<<handoff_entropy[e]<<endl;
                 cout<<"average_power_entropy e="<<e+11<<" :"<<average_power_entropy[e]<<endl;
+                break;
+            }
+        }
+    }
+    for(int n=0;n<20;n++){
+        if(average_power_your[n]>average_power_middle){
+            best_N=n+15;
+            if(average_power_your[n+1]<average_power_middle){
+                cout<<"handoff_your n="<<n+15<<" :"<<handoff_your[n]<<endl;
+                cout<<"average_power_your n="<<n+15<<" :"<<average_power_your[n]<<endl;
                 break;
             }
         }
@@ -314,6 +349,13 @@ int main(){
     for(int system_time=0;system_time<86400;system_time++){
         file<<system_time<<",";
         file<<handoff_entropy_time[system_time]<<endl;
+    }
+    file.close();
+    filename="your_policy λ="+to_string(arrival_rate)+".csv";
+    file.open(filename,ios::out);
+    for(int system_time=0;system_time<86400;system_time++){
+        file<<system_time<<",";
+        file<<handoff_your_time[system_time]<<endl;
     }
     file.close();
 }

@@ -12,8 +12,8 @@ class Car{
         float threshold_policy[20];
         int entropy_gain[20];
         float entropy_policy[20];
-        int your_gain;
-        float your_policy;
+        int your_gain[20];
+        float your_policy[20];
         int min_gain;
         float min_policy;
         int at_corner;
