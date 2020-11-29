@@ -246,7 +246,7 @@ int main(){
                 if(car_array[i].your_policy[n]<10 || (car_array[i].your_policy[n]<strong_one&&strong_one>n+15)){   
                     if(get_gain!=car_array[i].your_gain[n] && !first_hand_off){
                         handoff_your[n]++;
-                        if(n==1)
+                        if(n==14)
                             handoff_your_time[system_time]++;
                     }    
                     car_array[i].your_gain[n]=get_gain;
